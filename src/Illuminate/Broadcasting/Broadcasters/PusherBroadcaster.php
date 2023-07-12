@@ -4,6 +4,7 @@ namespace Illuminate\Broadcasting\Broadcasters;
 
 use Illuminate\Broadcasting\BroadcastException;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Pusher\ApiErrorException;
 use Pusher\Pusher;
@@ -23,7 +24,7 @@ class PusherBroadcaster extends Broadcaster
     /**
      * Create a new broadcaster instance.
      *
-     * @param  \Pusher\Pusher  $pusher
+     * @param \Pusher\Pusher $pusher
      * @return void
      */
     public function __construct(Pusher $pusher)
@@ -37,12 +38,12 @@ class PusherBroadcaster extends Broadcaster
      * See: https://pusher.com/docs/channels/library_auth_reference/auth-signatures/#user-authentication
      * See: https://pusher.com/docs/channels/server_api/authenticating-users/#response
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param \Illuminate\Http\Request $request
      * @return array|null
      */
     public function resolveAuthenticatedUser($request)
     {
-        if (! $user = parent::resolveAuthenticatedUser($request)) {
+        if (!$user = parent::resolveAuthenticatedUser($request)) {
             return;
         }
 
@@ -54,9 +55,9 @@ class PusherBroadcaster extends Broadcaster
         $encodedUser = json_encode($user);
         $decodedString = "{$request->socket_id}::user::{$encodedUser}";
 
-        $auth = $settings['auth_key'].':'.hash_hmac(
-            'sha256', $decodedString, $settings['secret']
-        );
+        $auth = $settings['auth_key'] . ':' . hash_hmac(
+                'sha256', $decodedString, $settings['secret']
+            );
 
         return [
             'auth' => $auth,
@@ -67,7 +68,7 @@ class PusherBroadcaster extends Broadcaster
     /**
      * Authenticate the incoming request for a given channel.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param \Illuminate\Http\Request $request
      * @return mixed
      *
      * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
@@ -78,7 +79,7 @@ class PusherBroadcaster extends Broadcaster
 
         if (empty($request->channel_name) ||
             ($this->isGuardedChannel($request->channel_name) &&
-            ! $this->retrieveUser($request, $channelName))) {
+                !$this->retrieveUser($request, $channelName))) {
             throw new AccessDeniedHttpException;
         }
 
@@ -90,8 +91,8 @@ class PusherBroadcaster extends Broadcaster
     /**
      * Return the valid authentication response.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  mixed  $result
+     * @param \Illuminate\Http\Request $request
+     * @param mixed $result
      * @return mixed
      */
     public function validAuthenticationResponse($request, $result)
@@ -110,8 +111,8 @@ class PusherBroadcaster extends Broadcaster
         $user = $this->retrieveUser($request, $channelName);
 
         $broadcastIdentifier = method_exists($user, 'getAuthIdentifierForBroadcasting')
-                        ? $user->getAuthIdentifierForBroadcasting()
-                        : $user->getAuthIdentifier();
+            ? $user->getAuthIdentifierForBroadcasting()
+            : $user->getAuthIdentifier();
 
         return $this->decodePusherResponse(
             $request,
@@ -124,26 +125,26 @@ class PusherBroadcaster extends Broadcaster
     /**
      * Decode the given Pusher response.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  mixed  $response
+     * @param \Illuminate\Http\Request $request
+     * @param mixed $response
      * @return array
      */
     protected function decodePusherResponse($request, $response)
     {
-        if (! $request->input('callback', false)) {
+        if (!$request->input('callback', false)) {
             return json_decode($response, true);
         }
 
         return response()->json(json_decode($response, true))
-                    ->withCallback($request->callback);
+            ->withCallback($request->callback);
     }
 
     /**
      * Broadcast the given event.
      *
-     * @param  array  $channels
-     * @param  string  $event
-     * @param  array  $payload
+     * @param array $channels
+     * @param string $event
+     * @param array $payload
      * @return void
      *
      * @throws \Illuminate\Broadcasting\BroadcastException
@@ -157,13 +158,26 @@ class PusherBroadcaster extends Broadcaster
         $channels = Collection::make($this->formatChannels($channels));
 
         try {
+//            $i = 0;
+
             $channels->chunk(100)->each(function ($channels) use ($event, $payload, $parameters) {
                 $this->pusher->trigger($channels->toArray(), $event, $payload, $parameters);
             });
-        } catch (ApiErrorException $e) {
+//            if ($i < 10) {
+//                logger()->info('ina omadan', ['channels' => $channels, 'event' => $event, 'payload' => $payload, '$parameters' => $parameters, '$socket' => $socket, 'pusher' => $this->pusher]);
+//                $i++;
+//            }
+
+        }
+        catch (ApiErrorException $e) {
+            logger()->info('oftadim khata', ['in khatas' => $e, 'channels' => $channels, 'event' => $event, 'payload' => $payload, '$parameters' => $parameters, '$socket' => $socket, 'pusher' => $this->pusher]);
             throw new BroadcastException(
                 sprintf('Pusher error: %s.', $e->getMessage())
             );
+        }
+        catch (\Throwable $e) {
+            logger()->info('khatayi k hesh balayi nemigire', ['in khatas' => $e, 'channels' => $channels, 'event' => $event, 'payload' => $payload, '$parameters' => $parameters, '$socket' => $socket, 'pusher' => $this->pusher]);
+
         }
     }
 
@@ -180,7 +194,7 @@ class PusherBroadcaster extends Broadcaster
     /**
      * Set the Pusher SDK instance.
      *
-     * @param  \Pusher\Pusher  $pusher
+     * @param \Pusher\Pusher $pusher
      * @return void
      */
     public function setPusher($pusher)

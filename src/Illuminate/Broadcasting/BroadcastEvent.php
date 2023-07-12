@@ -81,19 +81,14 @@ class BroadcastEvent implements ShouldQueue
         $payload = $this->getPayloadFromEvent($this->event);
 
         foreach ($connections as $connection) {
-            $coo = null;
+            
             try {
-                $coo = $manager->connection($connection);
-                $coo->broadcast(
+                $manager->connection($connection)->broadcast(
                     $channels, $name, $payload
                 );
-                if(isset($payload['i']) && $payload['i'] == 258) {
-                    logger()->info('ersal shod', ['dd' => $payload,'coo' => $coo]);
-
-                }
             }
             catch (\Throwable $exception) {
-                logger()->info('bura', ['ex' => $exception, 'dd' => $payload ,'coo' => $coo]);
+                logger()->info('bura', ['ex' => $exception, 'dd' => $payload ]);
             }
 
         }
